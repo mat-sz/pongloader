@@ -36,6 +36,9 @@ init:
     mov $1, %ax
     mov %ax, (PONG_MEMORY_BALL_DIRECTION_X)
 
+    mov $0, %ax
+    mov %ax, (PONG_MEMORY_BALL_DIRECTION_Y)
+
     mov $HALF_SCREEN_WIDTH, %ax
     mov %ax, (PONG_MEMORY_BALL_X)
 
@@ -100,10 +103,6 @@ drawRight:
     add $PONG_OFFSET_RIGHT, %ax
 
     call drawPlayer
-
-checkDefeat:
-    mov (PONG_MEMORY_GAME_END), %ax
-    jz drawBall
 
 ballPhysicsRight:
     # check if the right side (or right player) was hit
@@ -239,11 +238,6 @@ drawBall:
     pop %ds
     jmp main
 
-defeat:
-    mov $1, %ax
-    mov %ax, (PONG_MEMORY_GAME_END)
-    jmp checkDefeat
-
 # procedures
 clear:
     add $SCREEN_WIDTH, %di
@@ -297,7 +291,7 @@ drawPlayer:
 playerPhysics:
     # ends the game if either left or right side was hit
     cmp $-4, %ax
-    jl defeat
+    jl init
     cmp $4, %ax
     jg playerPhysicsSecondCheck
 
@@ -307,7 +301,7 @@ playerPhysics:
     
 playerPhysicsSecondCheck:
     cmp $24, %ax
-    jg defeat
+    jg init
     cmp $10, %ax
     jl playerPhysicsEnd
 
