@@ -194,6 +194,7 @@ rightMoveDown:
 
 sanityCheckBottom:
     # force the right player to not go out of screen (bottom)
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
     mov (PONG_MEMORY_RIGHT_Y), %cx
     cmp $180, %cx
     jl sanityCheckTop
