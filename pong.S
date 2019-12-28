@@ -24,10 +24,12 @@ KEY_DOWN = 0x50
 .global init
 
 init:
+    # set graphics mode to 13h (320x200, 256bit color)
     mov $0x00, %ah
     mov $0x13, %al
     int $0x10
 
+    # set default values for application variables
     mov $1, %ax
     mov %ax, (PONG_MEMORY_BALL_DIRECTION_X)
 
@@ -56,6 +58,7 @@ keyboard:
     mov $0x01, %ah
     int $0x16
 
+    # prepare %cx
     mov (PONG_MEMORY_LEFT_Y), %cx
     # when a key is pressed get it
     jz drawLeft
@@ -78,6 +81,7 @@ moveDown:
     inc %cx
 
 drawLeft:
+    # persist position
     mov %cx, (PONG_MEMORY_LEFT_Y)
 
     mov $SCREEN_WIDTH, %ax
@@ -99,6 +103,7 @@ checkDefeat:
     jz drawBall
 
 ballPhysicsRight:
+    # check if the right side (or right player) was hit
     mov (PONG_MEMORY_BALL_X), %ax
     
     cmp $PONG_OFFSET_RIGHT, %ax
@@ -116,6 +121,7 @@ ballPhysicsRight:
     jmp ballPhysicsTop
 
 ballPhysicsLeft:
+    # check if the left side (or left player) was hit
     cmp $PONG_OFFSET, %ax
     jg ballPhysicsTop
 
@@ -130,6 +136,7 @@ ballPhysicsLeft:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_X)
 
 ballPhysicsTop:
+    # bounce from the top
     mov (PONG_MEMORY_BALL_Y), %ax
     cmp $0, %ax
     
@@ -139,6 +146,7 @@ ballPhysicsTop:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
 
 ballPhysicsBottom:
+    # bounce from the bottom
     sub $2, %ax
     cmp $SCREEN_HEIGHT, %ax
     
@@ -148,6 +156,7 @@ ballPhysicsBottom:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
 
 moveBall:
+    # update ball's position
     mov (PONG_MEMORY_BALL_X), %ax
     add (PONG_MEMORY_BALL_DIRECTION_X), %ax
     mov %ax, (PONG_MEMORY_BALL_X)
@@ -157,6 +166,8 @@ moveBall:
     mov %ax, (PONG_MEMORY_BALL_Y)
 
 moveRight:
+    # update right player's position
+    # follows the ball's Y
     mov (PONG_MEMORY_RIGHT_Y), %cx
     cmp (PONG_MEMORY_BALL_Y), %cx
     je drawBall
@@ -165,14 +176,14 @@ moveRight:
 
 rightMoveUp:
     dec %cx
-    mov %cx, (PONG_MEMORY_RIGHT_Y)
     jmp sanityCheckBottom
 
 rightMoveDown:
     inc %cx
-    mov %cx, (PONG_MEMORY_RIGHT_Y)
 
 sanityCheckBottom:
+    # force the right player to not go out of screen (bottom)
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
     mov (PONG_MEMORY_RIGHT_Y), %cx
     cmp $180, %cx
     jl sanityCheckTop
@@ -180,6 +191,7 @@ sanityCheckBottom:
     mov %cx, (PONG_MEMORY_RIGHT_Y)
 
 sanityCheckTop:
+    # force the right player to not go out of screen (top)
     cmp $0, %cx
     jg drawBall
     mov $0, %cx
@@ -260,10 +272,12 @@ playerPhysics:
     mov $0, %cx
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
 
+    # ends the game if either left or right side was hit
     cmp $0, %ax
     jl defeat
     jg playerPhysicsSecondCheck
 
+    # change ball's vertical velocity if the player was hit from the bottom
     mov $-1, %cx
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
     
@@ -272,6 +286,7 @@ playerPhysicsSecondCheck:
     jg defeat
     jl playerPhysicsEnd
 
+    # change ball's vertical velocity if the player was hit from the top
     mov $1, %cx
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
 
