@@ -11,12 +11,13 @@ PONG_MEMORY_BALL_X = 0xFA06
 PONG_MEMORY_BALL_Y = 0xFA08
 PONG_MEMORY_BALL_DIRECTION_X = 0xFA0A
 PONG_MEMORY_BALL_DIRECTION_Y = 0xFA0C
-PONG_MEMORY_GAME_END = 0x0FA0E
+PONG_MEMORY_GAME_END = 0xFA0E
+PONG_MEMORY_RIGHT_TEMP = 0xFA10
 PONG_HEIGHT = 20
 PONG_HEIGHT_HALF = 10
 PONG_OFFSET = 10
 PONG_OFFSET_RIGHT = 306
-PONG_MOVEMENT_SPEED = 5
+PONG_MOVEMENT_SPEED = 8
 SCREEN_WIDTH_TIMES_MOVEMENT_SPEED = 1600
 
 KEY_UP = 0x48
@@ -170,13 +171,21 @@ moveBall:
 moveRight:
     # update right player's position
     # follows the ball's Y
+    mov (PONG_MEMORY_RIGHT_TEMP), %bx
+    inc %bx
+    cmp $2, %bx
+    mov %bx, (PONG_MEMORY_RIGHT_TEMP)
+    jl drawBall
+    
+    xor %bx, %bx
+    mov %bx, (PONG_MEMORY_RIGHT_TEMP)
+
     mov (PONG_MEMORY_RIGHT_Y), %cx
     cmp (PONG_MEMORY_BALL_Y), %cx
     je drawBall
-    jg rightMoveUp
     jl rightMoveDown
 
-rightMoveUp:
+    # move up
     dec %cx
     jmp sanityCheckBottom
 
@@ -185,7 +194,6 @@ rightMoveDown:
 
 sanityCheckBottom:
     # force the right player to not go out of screen (bottom)
-    mov %cx, (PONG_MEMORY_RIGHT_Y)
     mov (PONG_MEMORY_RIGHT_Y), %cx
     cmp $180, %cx
     jl sanityCheckTop
@@ -286,12 +294,10 @@ drawPlayer:
     ret
 
 playerPhysics:
-    mov $0, %cx
-    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
-
     # ends the game if either left or right side was hit
-    cmp $0, %ax
+    cmp $-4, %ax
     jl defeat
+    cmp $4, %ax
     jg playerPhysicsSecondCheck
 
     # change ball's vertical velocity if the player was hit from the bottom
@@ -299,8 +305,9 @@ playerPhysics:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
     
 playerPhysicsSecondCheck:
-    cmp $PONG_HEIGHT, %ax
+    cmp $24, %ax
     jg defeat
+    cmp $10, %ax
     jl playerPhysicsEnd
 
     # change ball's vertical velocity if the player was hit from the top
