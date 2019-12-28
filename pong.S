@@ -1,0 +1,288 @@
+VGA_START = 0xA000
+SCREEN_WIDTH = 320
+HALF_SCREEN_WIDTH = 160
+SCREEN_HEIGHT = 200
+PONG_DEFAULT_X = 90
+
+PONG_MEMORY_LEFT_Y = 0xFA00
+PONG_MEMORY_RIGHT_Y = 0xFA02
+PONG_MEMORY_BALL_X = 0xFA06
+PONG_MEMORY_BALL_Y = 0xFA08
+PONG_MEMORY_BALL_DIRECTION_X = 0xFA0A
+PONG_MEMORY_BALL_DIRECTION_Y = 0xFA0C
+PONG_MEMORY_GAME_END = 0x0FA0E
+PONG_HEIGHT = 20
+PONG_HEIGHT_HALF = 10
+PONG_OFFSET = 10
+PONG_OFFSET_RIGHT = 306
+
+KEY_UP = 0x48
+KEY_DOWN = 0x50
+
+.code16
+.global init
+
+init:
+    mov $0x00, %ah
+    mov $0x13, %al
+    int $0x10
+
+    mov $1, %ax
+    mov %ax, (PONG_MEMORY_BALL_DIRECTION_X)
+
+    mov $HALF_SCREEN_WIDTH, %ax
+    mov %ax, (PONG_MEMORY_BALL_X)
+
+    mov $PONG_DEFAULT_X, %ax
+    mov %ax, (PONG_MEMORY_LEFT_Y)
+    mov %ax, (PONG_MEMORY_RIGHT_Y)
+
+    add $0x8, %ax
+    mov %ax, (PONG_MEMORY_BALL_Y)
+
+    jmp keyboard
+
+main:
+    # frame delay
+    mov $0x00, %al
+    mov $0x86, %ah
+    mov $0x0000, %cx
+    mov $0x2000, %dx
+    int $0x15
+
+keyboard:
+    # check if a key is pressed
+    mov $0x01, %ah
+    int $0x16
+
+    # when a key is pressed get it
+    jz drawLeft
+    mov $0x00, %ah
+    int $0x16
+
+    cmp $KEY_UP, %ah
+    je moveUp
+
+    cmp $KEY_DOWN, %ah
+    je moveDown
+
+    jmp drawLeft
+
+moveUp:
+    mov (PONG_MEMORY_LEFT_Y), %ax
+    inc %ax
+    mov %ax, (PONG_MEMORY_LEFT_Y)
+    jmp drawLeft
+    
+moveDown:
+    mov (PONG_MEMORY_LEFT_Y), %ax
+    dec %ax
+    mov %ax, (PONG_MEMORY_LEFT_Y)
+
+drawLeft:
+    mov (PONG_MEMORY_LEFT_Y), %ax
+    mov $SCREEN_WIDTH, %cx
+    mul %cx
+    add $PONG_OFFSET, %ax
+
+    call drawPlayer
+
+drawRight:
+    mov (PONG_MEMORY_RIGHT_Y), %ax
+    mov $SCREEN_WIDTH, %cx
+    mul %cx
+    add $PONG_OFFSET_RIGHT, %ax
+
+    call drawPlayer
+
+checkDefeat:
+    mov (PONG_MEMORY_GAME_END), %ax
+    jz drawBall
+
+ballPhysicsRight:
+    mov (PONG_MEMORY_BALL_X), %ax
+    
+    cmp $PONG_OFFSET_RIGHT, %ax
+    jl ballPhysicsLeft
+
+    # we're behind the right player
+    # let's check whether to trigger defeat
+    mov (PONG_MEMORY_BALL_Y), %ax
+    sub (PONG_MEMORY_RIGHT_Y), %ax
+
+    call playerPhysics
+
+    mov $-1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_X)
+    jmp ballPhysicsTop
+
+ballPhysicsLeft:
+    cmp $PONG_OFFSET, %ax
+    jg ballPhysicsTop
+
+    # we're behind the right player
+    # let's check whether to trigger defeat
+    mov (PONG_MEMORY_BALL_Y), %ax
+    sub (PONG_MEMORY_LEFT_Y), %ax
+
+    call playerPhysics
+
+    mov $1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_X)
+
+ballPhysicsTop:
+    mov (PONG_MEMORY_BALL_Y), %ax
+    cmp $0, %ax
+    
+    jg ballPhysicsBottom
+
+    mov $1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+
+ballPhysicsBottom:
+    sub $2, %ax
+    cmp $SCREEN_HEIGHT, %ax
+    
+    jl moveBall
+
+    mov $-1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+
+moveBall:
+    mov (PONG_MEMORY_BALL_X), %ax
+    add (PONG_MEMORY_BALL_DIRECTION_X), %ax
+    mov %ax, (PONG_MEMORY_BALL_X)
+
+    mov (PONG_MEMORY_BALL_Y), %ax
+    add (PONG_MEMORY_BALL_DIRECTION_Y), %ax
+    mov %ax, (PONG_MEMORY_BALL_Y)
+
+moveRight:
+    mov (PONG_MEMORY_RIGHT_Y), %cx
+    cmp (PONG_MEMORY_BALL_Y), %cx
+    je drawBall
+    jg rightMoveUp
+    jl rightMoveDown
+
+rightMoveUp:
+    dec %cx
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
+    jmp sanityCheckBottom
+
+rightMoveDown:
+    inc %cx
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
+
+sanityCheckBottom:
+    mov (PONG_MEMORY_RIGHT_Y), %cx
+    cmp $180, %cx
+    jl sanityCheckTop
+    mov $180, %cx
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
+
+sanityCheckTop:
+    cmp $0, %cx
+    jg drawBall
+    mov $0, %cx
+    mov %cx, (PONG_MEMORY_RIGHT_Y)
+
+drawBall:
+    push %ds
+
+    mov (PONG_MEMORY_BALL_Y), %ax
+    mov $SCREEN_WIDTH, %cx
+    mul %cx
+    add (PONG_MEMORY_BALL_X), %ax
+
+    push %ax
+    push $VGA_START
+    
+    pop %ds
+    pop %di
+
+    sub $SCREEN_WIDTH, %di
+    call clear
+    movl $0x00000000, (%di)
+    add $SCREEN_WIDTH, %di
+    call clear
+    movl $0x000f0f00, (%di)
+    add $SCREEN_WIDTH, %di
+    call clear
+    movl $0x0f0f0f0f, (%di)
+    add $SCREEN_WIDTH, %di
+    call clear
+    movl $0x0f0f0f0f, (%di)
+    add $SCREEN_WIDTH, %di
+    call clear
+    movl $0x000f0f00, (%di)
+    add $SCREEN_WIDTH, %di
+    call clear
+    movl $0x00000000, (%di)
+    
+    pop %ds
+    jmp main
+
+defeat:
+    mov $1, %ax
+    mov %ax, (PONG_MEMORY_GAME_END)
+    jmp checkDefeat
+
+# procedures
+clear:
+    movl $0x00000000, -1(%di)
+    movl $0x00000000, 1(%di)
+    ret
+
+drawPlayer:
+    push %ds
+    push %ax
+    push $VGA_START
+
+    pop %ds
+    pop %di
+    
+    xor %cx, %cx
+
+    sub $SCREEN_WIDTH, %di
+    movl $0x00000000, (%di)
+    add $SCREEN_WIDTH, %di
+
+    drawPlayerLoop:
+        inc %cx
+
+        movl $0x0f0f0f0f, (%di)
+        add $SCREEN_WIDTH, %di
+
+        cmp $PONG_HEIGHT, %cx
+        jle drawPlayerLoop
+    
+    movl $0x00000000, (%di)
+
+    pop %ds
+    ret
+
+playerPhysics:
+    mov $0, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+
+    cmp $0, %ax
+    jl defeat
+    jg playerPhysicsSecondCheck
+
+    mov $-1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+    
+playerPhysicsSecondCheck:
+    sub $PONG_HEIGHT, %ax
+    cmp $0, %ax
+    jg defeat
+    jl playerPhysicsEnd
+
+    mov $1, %cx
+    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+
+playerPhysicsEnd:
+    ret
+
+.fill 510-(.-init), 1, 0
+.word 0xaa55
