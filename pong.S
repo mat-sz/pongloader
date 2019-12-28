@@ -16,6 +16,8 @@ PONG_HEIGHT = 20
 PONG_HEIGHT_HALF = 10
 PONG_OFFSET = 10
 PONG_OFFSET_RIGHT = 306
+PONG_MOVEMENT_SPEED = 5
+SCREEN_WIDTH_TIMES_MOVEMENT_SPEED = 1600
 
 KEY_UP = 0x48
 KEY_DOWN = 0x50
@@ -74,11 +76,11 @@ keyboard:
     jmp drawLeft
 
 moveUp:
-    dec %cx
+    sub $PONG_MOVEMENT_SPEED, %cx
     jmp drawLeft
     
 moveDown:
-    inc %cx
+    add $PONG_MOVEMENT_SPEED, %cx
 
 drawLeft:
     # persist position
@@ -247,13 +249,20 @@ drawPlayer:
 
     pop %ds
     pop %di
-    
+
+    sub $SCREEN_WIDTH_TIMES_MOVEMENT_SPEED, %di
+
     xor %cx, %cx
+    clearPlayerTopLoop:
+        inc %cx
 
-    sub $SCREEN_WIDTH, %di
-    movl $0x00000000, (%di)
-    add $SCREEN_WIDTH, %di
+        movl $0x0000000, (%di)
+        add $SCREEN_WIDTH, %di
 
+        cmp $PONG_MOVEMENT_SPEED, %cx
+        jle clearPlayerTopLoop
+
+    xor %cx, %cx
     drawPlayerLoop:
         inc %cx
 
@@ -262,8 +271,16 @@ drawPlayer:
 
         cmp $PONG_HEIGHT, %cx
         jle drawPlayerLoop
-    
-    movl $0x00000000, (%di)
+
+    xor %cx, %cx
+    clearPlayerBottomLoop:
+        inc %cx
+
+        movl $0x0000000, (%di)
+        add $SCREEN_WIDTH, %di
+
+        cmp $PONG_MOVEMENT_SPEED, %cx
+        jle clearPlayerBottomLoop
 
     pop %ds
     ret
