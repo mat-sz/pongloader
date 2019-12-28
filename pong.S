@@ -1,4 +1,5 @@
 VGA_START = 0xA000
+TWICE_SCREEN_WIDTH = 640
 SCREEN_WIDTH = 320
 HALF_SCREEN_WIDTH = 160
 SCREEN_HEIGHT = 200
@@ -55,6 +56,7 @@ keyboard:
     mov $0x01, %ah
     int $0x16
 
+    mov (PONG_MEMORY_LEFT_Y), %cx
     # when a key is pressed get it
     jz drawLeft
     mov $0x00, %ah
@@ -69,19 +71,16 @@ keyboard:
     jmp drawLeft
 
 moveUp:
-    mov (PONG_MEMORY_LEFT_Y), %ax
-    inc %ax
-    mov %ax, (PONG_MEMORY_LEFT_Y)
+    dec %cx
     jmp drawLeft
     
 moveDown:
-    mov (PONG_MEMORY_LEFT_Y), %ax
-    dec %ax
-    mov %ax, (PONG_MEMORY_LEFT_Y)
+    inc %cx
 
 drawLeft:
-    mov (PONG_MEMORY_LEFT_Y), %ax
-    mov $SCREEN_WIDTH, %cx
+    mov %cx, (PONG_MEMORY_LEFT_Y)
+
+    mov $SCREEN_WIDTH, %ax
     mul %cx
     add $PONG_OFFSET, %ax
 
@@ -120,7 +119,7 @@ ballPhysicsLeft:
     cmp $PONG_OFFSET, %ax
     jg ballPhysicsTop
 
-    # we're behind the right player
+    # we're behind the left player
     # let's check whether to trigger defeat
     mov (PONG_MEMORY_BALL_Y), %ax
     sub (PONG_MEMORY_LEFT_Y), %ax
@@ -200,22 +199,17 @@ drawBall:
     pop %ds
     pop %di
 
-    sub $SCREEN_WIDTH, %di
+    sub $TWICE_SCREEN_WIDTH, %di
     call clear
     movl $0x00000000, (%di)
-    add $SCREEN_WIDTH, %di
     call clear
     movl $0x000f0f00, (%di)
-    add $SCREEN_WIDTH, %di
     call clear
     movl $0x0f0f0f0f, (%di)
-    add $SCREEN_WIDTH, %di
     call clear
     movl $0x0f0f0f0f, (%di)
-    add $SCREEN_WIDTH, %di
     call clear
     movl $0x000f0f00, (%di)
-    add $SCREEN_WIDTH, %di
     call clear
     movl $0x00000000, (%di)
     
@@ -229,6 +223,7 @@ defeat:
 
 # procedures
 clear:
+    add $SCREEN_WIDTH, %di
     movl $0x00000000, -1(%di)
     movl $0x00000000, 1(%di)
     ret
@@ -273,8 +268,7 @@ playerPhysics:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
     
 playerPhysicsSecondCheck:
-    sub $PONG_HEIGHT, %ax
-    cmp $0, %ax
+    cmp $PONG_HEIGHT, %ax
     jg defeat
     jl playerPhysicsEnd
 
