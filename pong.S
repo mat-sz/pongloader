@@ -25,6 +25,9 @@ PONG_COLLISION_MAX_Y = PONG_HEIGHT + PONG_FORCE_FIELD
 PONG_MIN_Y = 0
 PONG_MAX_Y = SCREEN_HEIGHT - PONG_HEIGHT
 
+PONG_BALL_MIN_X = PONG_OFFSET + PONG_WIDTH
+PONG_BALL_MAX_X = PONG_OFFSET_RIGHT - PONG_WIDTH
+
 # memory
 VGA_START = 0xA000
 PONG_MEMORY_LEFT_Y = 0xFA00
@@ -128,7 +131,7 @@ ballPhysicsRight:
     # check if the right side (or right player) was hit
     mov (PONG_MEMORY_BALL_X), %ax
     
-    cmp $PONG_OFFSET_RIGHT, %ax
+    cmp $PONG_BALL_MAX_X, %ax
     jl ballPhysicsLeft
 
     # we're behind the right player
@@ -144,7 +147,7 @@ ballPhysicsRight:
 
 ballPhysicsLeft:
     # check if the left side (or left player) was hit
-    cmp $PONG_OFFSET, %ax
+    cmp $PONG_BALL_MIN_X, %ax
     jg ballPhysicsTop
 
     # we're behind the left player
