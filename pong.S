@@ -81,10 +81,13 @@ keyboard:
 
 moveUp:
     sub $PONG_MOVEMENT_SPEED, %cx
-    jmp drawLeft
+    jmp afterLeftMove
     
 moveDown:
     add $PONG_MOVEMENT_SPEED, %cx
+
+afterLeftMove:
+    call sanityCheckBottom
 
 drawLeft:
     # persist position
@@ -186,25 +189,14 @@ moveRight:
 
     # move up
     dec %cx
-    jmp sanityCheckBottom
+    jmp afterRightMove
 
 rightMoveDown:
     inc %cx
 
-sanityCheckBottom:
+afterRightMove:
     # force the right player to not go out of screen (bottom)
-    mov %cx, (PONG_MEMORY_RIGHT_Y)
-    mov (PONG_MEMORY_RIGHT_Y), %cx
-    cmp $180, %cx
-    jl sanityCheckTop
-    mov $180, %cx
-    mov %cx, (PONG_MEMORY_RIGHT_Y)
-
-sanityCheckTop:
-    # force the right player to not go out of screen (top)
-    cmp $0, %cx
-    jg drawBall
-    mov $0, %cx
+    call sanityCheckBottom
     mov %cx, (PONG_MEMORY_RIGHT_Y)
 
 drawBall:
@@ -310,6 +302,21 @@ playerPhysicsSecondCheck:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
 
 playerPhysicsEnd:
+    ret
+
+sanityCheckBottom:
+    # force the player to not go out of screen (bottom)
+    cmp $180, %cx
+    jl sanityCheckTop
+    mov $180, %cx
+
+sanityCheckTop:
+    # force the player to not go out of screen (top)
+    cmp $0, %cx
+    jg sanityCheckEnd
+    mov $0, %cx
+
+sanityCheckEnd:
     ret
 
 .fill 510-(.-init), 1, 0
