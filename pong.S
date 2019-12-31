@@ -7,14 +7,23 @@ PONG_HEIGHT = 20
 PONG_WIDTH = 4 # don't change this one, it should always stay at 4
 PONG_OFFSET = 10
 PONG_MOVEMENT_SPEED = 8
+PONG_COMPUTER_SPEED = 2 # less is faster
+PONG_FORCE_FIELD = 4 # collision tolerance, makes game easier
 
 # computed values
 TWICE_SCREEN_WIDTH = SCREEN_WIDTH * 2
 HALF_SCREEN_WIDTH = SCREEN_WIDTH / 2
 SCREEN_WIDTH_TIMES_MOVEMENT_SPEED = PONG_MOVEMENT_SPEED * SCREEN_WIDTH
 
-PONG_DEFAULT_Y = SCREEN_HEIGHT / 2 - PONG_HEIGHT / 2
+PONG_HEIGHT_HALF = PONG_HEIGHT / 2
+PONG_DEFAULT_Y = SCREEN_HEIGHT / 2 - PONG_HEIGHT_HALF
 PONG_OFFSET_RIGHT = SCREEN_WIDTH - PONG_OFFSET - PONG_WIDTH
+
+PONG_COLLISION_MIN_Y = -1 * PONG_FORCE_FIELD
+PONG_COLLISION_MAX_Y = PONG_HEIGHT + PONG_FORCE_FIELD
+
+PONG_MIN_Y = 0
+PONG_MAX_Y = SCREEN_HEIGHT - PONG_HEIGHT
 
 # memory
 VGA_START = 0xA000
@@ -183,7 +192,7 @@ moveRight:
     # follows the ball's Y
     mov (PONG_MEMORY_RIGHT_TEMP), %bx
     inc %bx
-    cmp $2, %bx
+    cmp $PONG_COMPUTER_SPEED, %bx
     mov %bx, (PONG_MEMORY_RIGHT_TEMP)
     jl drawBall
     
@@ -253,6 +262,7 @@ drawPlayer:
     pop %ds
     pop %di
 
+    sub $SCREEN_WIDTH, %di
     sub $SCREEN_WIDTH_TIMES_MOVEMENT_SPEED, %di
 
     xor %cx, %cx
@@ -290,9 +300,9 @@ drawPlayer:
 
 playerPhysics:
     # ends the game if either left or right side was hit
-    cmp $-4, %ax
+    cmp $PONG_COLLISION_MIN_Y, %ax
     jl init
-    cmp $4, %ax
+    cmp $PONG_FORCE_FIELD, %ax
     jg playerPhysicsSecondCheck
 
     # change ball's vertical velocity if the player was hit from the bottom
@@ -300,9 +310,9 @@ playerPhysics:
     mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
     
 playerPhysicsSecondCheck:
-    cmp $24, %ax
+    cmp $PONG_COLLISION_MAX_Y, %ax
     jg init
-    cmp $10, %ax
+    cmp $PONG_HEIGHT_HALF, %ax
     jl playerPhysicsEnd
 
     # change ball's vertical velocity if the player was hit from the top
@@ -314,15 +324,15 @@ playerPhysicsEnd:
 
 sanityCheckBottom:
     # force the player to not go out of screen (bottom)
-    cmp $180, %cx
+    cmp $PONG_MAX_Y, %cx
     jl sanityCheckTop
-    mov $180, %cx
+    mov $PONG_MAX_Y, %cx
 
 sanityCheckTop:
     # force the player to not go out of screen (top)
-    cmp $0, %cx
+    cmp $PONG_MIN_Y, %cx
     jg sanityCheckEnd
-    mov $0, %cx
+    mov $PONG_MIN_Y, %cx
 
 sanityCheckEnd:
     ret
