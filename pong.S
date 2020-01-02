@@ -177,7 +177,7 @@ ballPhysicsTop:
 
 ballPhysicsBottom:
     # bounce from the bottom
-    sub $2, %ax
+    add $4, %ax
     cmp $SCREEN_HEIGHT, %ax
     
     jl moveBall
