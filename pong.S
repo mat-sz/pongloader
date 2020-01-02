@@ -1,3 +1,8 @@
+# Pongloader - pong made to fit in 512 bytes.
+# It's designed to be bootable by IBM-compatible PCs.
+# The code is optimized for space taken by the code
+# and not performance. Don't expect great code in here.
+
 # graphics mode constant (we're on 13h)
 SCREEN_WIDTH = 320
 SCREEN_HEIGHT = 200

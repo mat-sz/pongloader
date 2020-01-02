@@ -6,7 +6,11 @@
 
 Bootloader version of pong, fits in 512 bytes.
 
-## Running
+**This project is optimized for the resulting binary size, not performance.**
+
+You can download prebuilt binaries [here](https://github.com/mat-sz/pongloader/releases).
+
+## Running in QEMU
 
 ```
 make && qemu-system-x86_64 pong.bin
