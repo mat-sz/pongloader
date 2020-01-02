@@ -1,7 +1,15 @@
 # pongloader
 
 <p align="center">
-    <img src="https://raw.githubusercontent.com/mat-sz/pongloader/master/screenshot.png" alt="Screenshot">
+    <a href="https://matsz.dev/pongloader/">
+        <strong>Click here to open an online demo.</strong>
+    </a>
+</p>
+
+<p align="center">
+    <a href="https://matsz.dev/pongloader/">
+        <img src="https://raw.githubusercontent.com/mat-sz/pongloader/master/screenshot.png" alt="Screenshot">
+    </a>
 </p>
 
 Bootloader version of pong, fits in 512 bytes.
