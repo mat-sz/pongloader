@@ -32,7 +32,6 @@ PONG_OFFSET_RIGHT = SCREEN_WIDTH - PONG_OFFSET - PONG_WIDTH
 PONG_COLLISION_MIN_Y = -1 * PONG_FORCE_FIELD
 PONG_COLLISION_MAX_Y = PONG_HEIGHT + PONG_FORCE_FIELD
 
-PONG_MIN_Y = 0
 PONG_MAX_Y = SCREEN_HEIGHT - PONG_HEIGHT
 
 PONG_BALL_MIN_X = PONG_OFFSET + PONG_WIDTH
@@ -188,7 +187,7 @@ ballPhysicsLeft:
 ballPhysicsTop:
     # Bounce (top).
     mov %bp, %ax # BP = Ball Y
-    cmp $0, %ax
+    test %ax, %ax
     
     jg ballPhysicsBottom
 
@@ -314,9 +313,9 @@ sanityCheckBottom:
 
 sanityCheckTop:
     # Force the player to not escape screen bounds (top).
-    cmp $PONG_MIN_Y, %cx
+    test %cx, %cx
     jg sanityCheckEnd
-    mov $PONG_MIN_Y, %cx
+    xor %cx, %cx
 
 sanityCheckEnd:
     ret
