@@ -3,19 +3,24 @@
 # The code is optimized for space taken by the code
 # and not performance. Don't expect great code in here.
 
-# graphics mode constant (we're on 13h)
+# Reserved registers:
+# BP = Ball Y
+# SI = Ball direction Y
+# DI = Ball X
+
+# Graphics mode constants (13h - 320x200).
 SCREEN_WIDTH = 320
 SCREEN_HEIGHT = 200
 
-# pong constants
+# Pong constants.
 PONG_HEIGHT = 20
-PONG_WIDTH = 4 # don't change this one, it should always stay at 4
+PONG_WIDTH = 4 # Don't change this one, it should always stay at 4.
 PONG_OFFSET = 10
 PONG_MOVEMENT_SPEED = 8
-PONG_COMPUTER_SPEED = 2 # less is faster
-PONG_FORCE_FIELD = 4 # collision tolerance, makes game easier
+PONG_COMPUTER_SPEED = 2 # Less is faster.
+PONG_FORCE_FIELD = 4 # Collision tolerance, makes game easier.
 
-# computed values
+# Computed values (based on settings above).
 TWICE_SCREEN_WIDTH = SCREEN_WIDTH * 2
 HALF_SCREEN_WIDTH = SCREEN_WIDTH / 2
 SCREEN_WIDTH_TIMES_MOVEMENT_SPEED = PONG_MOVEMENT_SPEED * SCREEN_WIDTH
@@ -36,19 +41,16 @@ PONG_BALL_MAX_X = PONG_OFFSET_RIGHT - PONG_WIDTH
 TWICE_PONG_MOVEMENT_SPEED = PONG_MOVEMENT_SPEED * 2
 DRAW_PLAYER_MEMORY_OFFSET = SCREEN_WIDTH_TIMES_MOVEMENT_SPEED + SCREEN_WIDTH
 
-# memory
+# Memory.
 VGA_START = 0xA000
 MEMORY_OFFSET = 0xFFD0 # I'm storing data in the VGA memory, unsafe, but seems to work.
 PONG_MEMORY_LEFT_Y = MEMORY_OFFSET
 PONG_MEMORY_RIGHT_Y = MEMORY_OFFSET + 2
-PONG_MEMORY_BALL_X = MEMORY_OFFSET + 4
-PONG_MEMORY_BALL_Y = MEMORY_OFFSET + 6
 PONG_MEMORY_BALL_DIRECTION_X = MEMORY_OFFSET + 8
-PONG_MEMORY_BALL_DIRECTION_Y = MEMORY_OFFSET + 10
 PONG_MEMORY_GAME_END = MEMORY_OFFSET + 12
 PONG_MEMORY_RIGHT_TEMP = MEMORY_OFFSET + 14
 
-# keyboard scancodes
+# Keyboard scancodes.
 KEY_UP = 0x48
 KEY_DOWN = 0x50
 
@@ -56,52 +58,48 @@ KEY_DOWN = 0x50
 .global init
 
 init:
-    # set graphics mode to 13h (320x200, 256bit color)
+    # Set graphics mode to 13h (320x200, 256bit color).
     mov $0x13, %ax
     int $0x10
 
-    # I will be storing data in the VGA memory
-    # it's not safe, but seems to work.
+    # I will be storing data in the VGA memory.
+    # It's theoretically not safe, but seems to work.
     mov $VGA_START, %ax
     mov %ax, %ds
 
-    # set default values for application variables
-    mov $1, %ax
-    mov %ax, (PONG_MEMORY_BALL_DIRECTION_X)
+    # Initialize variables.
+    xor %si, %si
 
-    mov $0, %ax
-    mov %ax, (PONG_MEMORY_BALL_DIRECTION_Y)
+    mov $1, (PONG_MEMORY_BALL_DIRECTION_X)
 
-    mov $HALF_SCREEN_WIDTH, %ax
-    mov %ax, (PONG_MEMORY_BALL_X)
+    mov $HALF_SCREEN_WIDTH, %di # DI = Ball X
 
     mov $PONG_DEFAULT_Y, %ax
     mov %ax, (PONG_MEMORY_LEFT_Y)
     mov %ax, (PONG_MEMORY_RIGHT_Y)
 
     add $0x8, %ax
-    mov %ax, (PONG_MEMORY_BALL_Y)
+    mov %ax, %bp # BP = Ball Y
 
     jmp keyboard
 
 main:
-    # frame delay
+    # Delay frame by 32ms. (30 FPS)
     mov $0x8600, %ax
-    mov $0x0000, %cx
+    xor %cx, %cx
     mov $0x2000, %dx
     int $0x15
 
 keyboard:
-    # check if a key is pressed
+    # Check if a key is pressed.
     mov $0x01, %ah
     int $0x16
 
-    # prepare %cx
     mov (PONG_MEMORY_LEFT_Y), %cx
 
-    # when a key is pressed get it
+    # If a key is pressed get it.
     jz drawLeft
-    mov $0x00, %ah
+    xor %ah, %ah
     int $0x16
 
     cmp $KEY_UP, %ah
@@ -122,106 +120,98 @@ afterLeftMove:
     call sanityCheckBottom
 
 drawLeft:
-    # persist position
+    # Persist position.
     mov %cx, (PONG_MEMORY_LEFT_Y)
-    mov $PONG_OFFSET, %si
+    mov $PONG_OFFSET, %bx
 
     call drawPlayer
 
 drawRight:
     mov (PONG_MEMORY_RIGHT_Y), %cx
-    mov $PONG_OFFSET_RIGHT, %si
+    mov $PONG_OFFSET_RIGHT, %bx
 
     call drawPlayer
 
 drawBall:
-    mov (PONG_MEMORY_BALL_Y), %ax
+    mov %bp, %ax # BP = Ball Y
     mov $SCREEN_WIDTH, %cx
     mul %cx
-    add (PONG_MEMORY_BALL_X), %ax
+    add %di, %ax # DI = Ball X
 
-    mov %ax, %di
+    mov %ax, %bx
 
-    sub $TWICE_SCREEN_WIDTH, %di
+    sub $TWICE_SCREEN_WIDTH, %bx
     call clear
-    movl $0x00000000, (%di)
+    movl $0x00000000, (%bx)
     call clear
-    movl $0x000f0f00, (%di)
+    movl $0x000f0f00, (%bx)
     call clear
-    movl $0x0f0f0f0f, (%di)
+    movl $0x0f0f0f0f, (%bx)
     call clear
-    movl $0x0f0f0f0f, (%di)
+    movl $0x0f0f0f0f, (%bx)
     call clear
-    movl $0x000f0f00, (%di)
+    movl $0x000f0f00, (%bx)
     call clear
-    movl $0x00000000, (%di)
+    movl $0x00000000, (%bx)
 
 ballPhysicsRight:
-    # check if the right side (or right player) was hit
-    mov (PONG_MEMORY_BALL_X), %si
+    # Check if the right side (or right player) was hit.
+    mov %di, %bx # DI = Ball X
     
-    cmp $PONG_BALL_MAX_X, %si
+    cmp $PONG_BALL_MAX_X, %bx
     jl ballPhysicsLeft
 
-    # we're behind the right player
-    # let's check whether to trigger defeat
-    mov (PONG_MEMORY_BALL_Y), %ax
+    # We're behind the right player.
+    # Let's check whether we should trigger defeat.
+    mov %bp, %ax # BP = Ball Y
     sub (PONG_MEMORY_RIGHT_Y), %ax
 
     call playerPhysics
 
-    mov $-1, %cx
-    mov %cx, (PONG_MEMORY_BALL_DIRECTION_X)
+    mov $-1, (PONG_MEMORY_BALL_DIRECTION_X)
     jmp ballPhysicsTop
 
 ballPhysicsLeft:
-    # check if the left side (or left player) was hit
-    cmp $PONG_BALL_MIN_X, %si
+    # Check if the left side (or left player) was hit.
+    cmp $PONG_BALL_MIN_X, %bx
     jg ballPhysicsTop
 
-    # we're behind the left player
-    # let's check whether to trigger defeat
-    mov (PONG_MEMORY_BALL_Y), %ax
+    # We're behind the left player.
+    # Let's check whether we should trigger defeat.
+    mov %bp, %ax # BP = Ball Y
     sub (PONG_MEMORY_LEFT_Y), %ax
 
     call playerPhysics
 
-    mov $1, %cx
-    mov %cx, (PONG_MEMORY_BALL_DIRECTION_X)
+    mov $1, (PONG_MEMORY_BALL_DIRECTION_X)
 
 ballPhysicsTop:
-    # bounce from the top
-    mov (PONG_MEMORY_BALL_Y), %ax
+    # Bounce (top).
+    mov %bp, %ax # BP = Ball Y
     cmp $0, %ax
     
     jg ballPhysicsBottom
 
-    mov $1, %cx
-    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+    mov $1, %si # SI = Ball direction Y
 
 ballPhysicsBottom:
-    # bounce from the bottom
+    # Bounce (bottom).
     add $4, %ax
     cmp $SCREEN_HEIGHT, %ax
     
     jl moveBall
 
-    mov $-1, %cx
-    mov %cx, (PONG_MEMORY_BALL_DIRECTION_Y)
+    mov $-1, %si # SI = Ball direction Y
 
 moveBall:
-    # update ball's position
-    mov (PONG_MEMORY_BALL_X), %ax
-    add (PONG_MEMORY_BALL_DIRECTION_X), %ax
-    mov %ax, (PONG_MEMORY_BALL_X)
-
-    mov (PONG_MEMORY_BALL_Y), %ax
-    add (PONG_MEMORY_BALL_DIRECTION_Y), %ax
-    mov %ax, (PONG_MEMORY_BALL_Y)
+    # Update ball's position.
+    add (PONG_MEMORY_BALL_DIRECTION_X), %di # DI = Ball X
+    
+    add %si, %bp # SI = Ball direction Y, BP = Ball Y
 
 moveRight:
-    # update right player's position
-    # follows the ball's Y
+    # Update right player's position.
+    # Follows the ball's Y (with a delay that allows the human player to win).
     mov (PONG_MEMORY_RIGHT_TEMP), %bx
     inc %bx
     cmp $PONG_COMPUTER_SPEED, %bx
@@ -232,7 +222,7 @@ moveRight:
     mov %bx, (PONG_MEMORY_RIGHT_TEMP)
 
     mov (PONG_MEMORY_RIGHT_Y), %cx
-    cmp (PONG_MEMORY_BALL_Y), %cx
+    cmp %bp, %cx # BP = Ball Y
     je main
     jl rightMoveDown
 
@@ -244,32 +234,30 @@ rightMoveDown:
     inc %cx
 
 afterRightMove:
-    # force the right player to not go out of screen (bottom)
+    # Force the right player to not escape screen bounds (bottom).
     call sanityCheckBottom
     mov %cx, (PONG_MEMORY_RIGHT_Y)
     jmp main
 
-# procedures
+# Procedures.
 clear:
-    add $SCREEN_WIDTH, %di
-    movl $0x00000000, -1(%di)
-    movl $0x00000000, 1(%di)
+    add $SCREEN_WIDTH, %bx
+    movl $0x00000000, -1(%bx)
+    movl $0x00000000, 1(%bx)
     ret
 
 drawPlayer:
     mov $SCREEN_WIDTH, %ax
     mul %cx
-    add %si, %ax
-    
-    mov %ax, %di
-    sub $DRAW_PLAYER_MEMORY_OFFSET, %di
+    add %ax, %bx
+    sub $DRAW_PLAYER_MEMORY_OFFSET, %bx
 
     xor %cx, %cx
     clearPlayerTopLoop:
         inc %cx
 
-        movl $0x0000000, (%di)
-        add $SCREEN_WIDTH, %di
+        movl $0x00000000, (%bx)
+        add $SCREEN_WIDTH, %bx
 
         cmp $PONG_MOVEMENT_SPEED, %cx
         jle clearPlayerTopLoop
@@ -278,8 +266,8 @@ drawPlayer:
     drawPlayerLoop:
         inc %cx
 
-        movl $0x0f0f0f0f, (%di)
-        add $SCREEN_WIDTH, %di
+        movl $0x0f0f0f0f, (%bx)
+        add $SCREEN_WIDTH, %bx
 
         cmp $PONG_HEIGHT, %cx
         jle drawPlayerLoop
@@ -288,8 +276,8 @@ drawPlayer:
     clearPlayerBottomLoop:
         inc %cx
 
-        movl $0x0000000, (%di)
-        add $SCREEN_WIDTH, %di
+        movl $0x0000000, (%bx)
+        add $SCREEN_WIDTH, %bx
 
         cmp $PONG_MOVEMENT_SPEED, %cx
         jle clearPlayerBottomLoop
@@ -297,14 +285,14 @@ drawPlayer:
     ret
 
 playerPhysics:
-    # ends the game if either left or right side was hit
+    # End the game if sides are hit.
     cmp $PONG_COLLISION_MIN_Y, %ax
     jl init
     cmp $PONG_FORCE_FIELD, %ax
     jg playerPhysicsSecondCheck
 
-    # change ball's vertical velocity if the player was hit from the bottom
-    movl $-1, (PONG_MEMORY_BALL_DIRECTION_Y)
+    # Change ball's vertical velocity if the player was hit from the bottom.
+    mov $-1, %si # SI = Ball direction Y
     
 playerPhysicsSecondCheck:
     cmp $PONG_COLLISION_MAX_Y, %ax
@@ -312,20 +300,20 @@ playerPhysicsSecondCheck:
     cmp $PONG_HEIGHT_HALF, %ax
     jl playerPhysicsEnd
 
-    # change ball's vertical velocity if the player was hit from the top
-    movl $1, (PONG_MEMORY_BALL_DIRECTION_Y)
+    # Change ball's vertical velocity if the player was hit from the top.
+    mov $1, %si # SI = Ball direction Y
 
 playerPhysicsEnd:
     ret
 
 sanityCheckBottom:
-    # force the player to not go out of screen (bottom)
+    # Force the player to not escape screen bounds (bottom).
     cmp $PONG_MAX_Y, %cx
     jl sanityCheckTop
     mov $PONG_MAX_Y, %cx
 
 sanityCheckTop:
-    # force the player to not go out of screen (top)
+    # Force the player to not escape screen bounds (top).
     cmp $PONG_MIN_Y, %cx
     jg sanityCheckEnd
     mov $PONG_MIN_Y, %cx
