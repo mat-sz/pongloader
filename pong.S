@@ -69,7 +69,7 @@ init:
     # Initialize variables.
     xor %si, %si
 
-    mov $1, (PONG_MEMORY_BALL_DIRECTION_X)
+    movw $1, (PONG_MEMORY_BALL_DIRECTION_X)
 
     mov $HALF_SCREEN_WIDTH, %di # DI = Ball X
 
@@ -167,7 +167,7 @@ ballPhysicsRight:
 
     call playerPhysics
 
-    mov $-1, (PONG_MEMORY_BALL_DIRECTION_X)
+    negw (PONG_MEMORY_BALL_DIRECTION_X)
     jmp ballPhysicsTop
 
 ballPhysicsLeft:
@@ -182,7 +182,7 @@ ballPhysicsLeft:
 
     call playerPhysics
 
-    mov $1, (PONG_MEMORY_BALL_DIRECTION_X)
+    negw (PONG_MEMORY_BALL_DIRECTION_X)
 
 ballPhysicsTop:
     # Bounce (top).
@@ -240,6 +240,7 @@ afterRightMove:
 
 # Procedures.
 clear:
+    # Clears the area around the ball and moves to next line.
     add $SCREEN_WIDTH, %bx
     movl $0x00000000, -1(%bx)
     movl $0x00000000, 1(%bx)
