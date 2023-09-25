@@ -1,9 +1,10 @@
 .DEFAULT_GOAL := all
 
 clean:
-	-rm -f *.o
-	-rm -f *.bin
+	-rm -rf out
 
 all: clean
-	as -o pong.o pong.S
-	ld -o pong.bin --oformat binary -e init pong.o
+	mkdir out
+	as -o out/pong.o pong.S
+	ld -Ttext 0x7C00 -o out/pong.elf out/pong.o
+	objcopy -O binary out/pong.elf out/pong.bin

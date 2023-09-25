@@ -21,5 +21,5 @@ You can download prebuilt binaries [here](https://github.com/mat-sz/pongloader/r
 ## Running in QEMU
 
 ```
-make && qemu-system-x86_64 pong.bin
+make && qemu-system-x86_64 out/pong.bin
 ```
